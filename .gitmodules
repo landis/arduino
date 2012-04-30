@@ -1,3 +1,12 @@
 [submodule "libraries/Adafruit_GPS"]
 	path = libraries/Adafruit_GPS
 	url = git://github.com/adafruit/Adafruit-GPS-Library.git
+[submodule "libraries/Adafruit_GFX"]
+	path = libraries/Adafruit_GFX
+	url = git://github.com/adafruit/Adafruit-GFX-Library.git
+[submodule "libraries/Adafruit_ST7735"]
+	path = libraries/Adafruit_ST7735
+	url = git://github.com/adafruit/Adafruit-ST7735-Library.git
+[submodule "libraries/Adafruit_BMP085"]
+	path = libraries/Adafruit_BMP085
+	url = git://github.com/adafruit/Adafruit-BMP085-Library.git
