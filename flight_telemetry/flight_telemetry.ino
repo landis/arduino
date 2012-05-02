@@ -33,6 +33,8 @@
   int greenLEDpin = 3;
   RTC_DS1307 RTC;
   const int sdCS = 10;
+  char filename[] = "LOG00.csv";
+  File logFile;
 #endif
 
 /* TFT Screen */
@@ -63,6 +65,7 @@
   float Temperature = 0, Pressure = 0, Altitude = 0, calcAltitude = 0;
   uint32_t nextBmp085 = 0;
   //#define curPress 101964
+  uint8_t j = 0;
 #endif /* ENABLE_BMP085 */
 
 /* Accelerometer */
@@ -97,7 +100,7 @@ void setup()
     if (! RTC.isrunning()) {
       Serial.println("RTC is NOT running!");
       // following line sets the RTC to the date & time this sketch was compiled
-      RTC.adjust(DateTime(__DATE__, __TIME__));
+      //RTC.adjust(DateTime(__DATE__, __TIME__));
     }
 
     Serial.print("Initializing SD Card...");
@@ -114,8 +117,21 @@ void setup()
     delay(500);
     digitalWrite(greenLEDpin, LOW);
     
-    File logFile = SD.open("LOG001.csv", FILE_WRITE);
-    if (logFile)
+    for (uint8_t i = 0; i < 100; i++) {
+      filename[3] = i/10 + '0';
+      filename[4] = i%10 + '0';
+      if (! SD.exists(filename)) {
+        logFile = SD.open(filename, FILE_WRITE);
+        break;
+      }
+    }
+    
+    if (! logFile)
+    {
+      digitalWrite(redLEDpin, HIGH);
+      Serial.println("Couldn't open log file");
+    }
+    else
     {
       digitalWrite(greenLEDpin, HIGH);
       String header = "ID,RTCtimestamp";
@@ -135,11 +151,6 @@ void setup()
       logFile.close();
       digitalWrite(greenLEDpin, LOW);
       //Serial.println(header);
-    }
-    else
-    {
-      digitalWrite(redLEDpin, HIGH);
-      Serial.println("Couldn't open log file");
     }
   #endif /* ENABLE_SDLOG */
 
@@ -292,22 +303,56 @@ void loop()
     String comma = ","; String colon = ":";
     String slash = "/"; String space = " ";
     String dot = ".";
+    String rsmonth = "0"; String rsday = "0";
+    String rsmin = "0"; String rssec = "0";
     DateTime now = RTC.now();
     utime = (String) now.unixtime();
     char ryear[5]; dtostrf(now.year(), 4, 0, ryear);
-    char rmonth[3]; dtostrf(now.month(), 2, 0, rmonth);
-    char rday[3]; dtostrf(now.day(), 2, 0, rday);
+    char rmonth[3]; 
+    if(now.month() <= 9) {
+      dtostrf(now.month(), 1, 0, rmonth);
+      rsmonth += rmonth;
+    }
+    else {
+      dtostrf(now.month(), 2, 0, rmonth);
+      rsmonth = String(rmonth);
+    }
+    char rday[3]; 
+    if(now.day() <= 9) {
+      dtostrf(now.day(), 1, 0, rday);
+      rsday += rday;
+    }
+    else {
+      dtostrf(now.day(), 1, 0, rday);
+      rsday = String(rday);
+    }
     char rhour[3]; dtostrf(now.hour(), 2, 0, rhour);
-    char rmin[3]; dtostrf(now.minute(), 2, 0, rmin);
-    char rsec[3]; dtostrf(now.second(), 2, 0, rsec);
-
+    char rmin[3]; 
+    if(now.minute() <= 9) {
+      dtostrf(now.minute(), 1, 0, rmin);
+      rsmin += rmin;
+    }
+    else {
+      dtostrf(now.minute(), 2, 0, rmin);
+      rsmin = String(rmin);
+    }      
+    char rsec[3]; 
+    if(now.second() <= 9) {
+      dtostrf(now.second(), 1, 0, rsec);
+      rssec += rsec;
+    }
+    else {
+      dtostrf(now.second(), 2, 0, rsec);
+      rssec = String(rsec);
+    }
     if (! RTC.isrunning()) {
       rtimestamp = "RTC is NOT running!";
     }
     else {
-      rtimestamp = (ryear + slash + rmonth + slash + rday + space
-                  + rhour + colon + rmin + colon + rsec);
+      rtimestamp = (ryear + slash + rsmonth + slash + rsday + space
+                  + rhour + colon + rsmin + colon + rssec);
     }
+    Serial.println(rtimestamp);
   #endif
 
   // IF GPS is connected and SD Logger, read into variables //
@@ -351,6 +396,10 @@ void loop()
   // IF SD Datalogger and BMP085, gather BMP info into variables //
   #if defined(ENABLE_BMP085) && defined(ENABLE_SDLOG)
     char temp[6]; dtostrf(Temperature, 4, 2, temp);
+    String tempFs;
+    String tempCs; tempCs = String(temp) + " ";
+    char tempF[6]; dtostrf((Temperature * 9 / 5 + 32), 4, 2, tempF);
+    tempFs = String(tempF) + "F";
     char press[9]; dtostrf(Pressure, 6, 0, press);
     char alt[8]; dtostrf(Altitude, 4, 1, alt); 
     char calt[9]; dtostrf(calcAltitude, 8, 1, calt);
@@ -412,19 +461,22 @@ void loop()
 //    String testgtime = (gyearc + slash + gmon + slash + gday + space + ghour + colon + gmin + colon + gsec + comma);
 //    Serial.println(testgtime);
 //    Serial.println();
-    File dataFile = SD.open("LOG001.csv", FILE_WRITE);
-    if (dataFile)
+    if (SD.exists(filename)) {
+      logFile = SD.open(filename, FILE_WRITE);
+    }
+    if (logFile)
     {
       digitalWrite(greenLEDpin, HIGH);
-      dataFile.println(record);
-      dataFile.close();
+      logFile.println(record);
+      logFile.close();
       digitalWrite(greenLEDpin, LOW);
       Serial.println(record);
     }
     else
     {
       digitalWrite(redLEDpin, HIGH);
-      Serial.println("error opening LOG001.csv");
+      Serial.print("error opening log ");
+      Serial.println(filename);
     }
   #endif
   
@@ -434,7 +486,7 @@ void loop()
     tft.setRotation(1);
     tft.drawString(0, 20, time_char, ST7735_WHITE);
     //tft.drawString(0, 20, rtimestamp, ST7735_WHITE);
-    tft.drawString(0, 30, "LOG001.CSV", ST7735_WHITE);
+    tft.drawString(0, 30, filename, ST7735_WHITE);
   #endif
   
   #if defined(ENABLE_TFT) && defined(ENABLE_GPS)
@@ -450,7 +502,18 @@ void loop()
   #if defined(ENABLE_TFT) && defined(ENABLE_BMP085)
     tft.setRotation(1);
     tft.drawString(0, 120, press, ST7735_WHITE);
-    tft.drawString(50, 120, temp, ST7735_WHITE);
+    
+    if(j%2 == 0) {
+      char tempCsa[7];
+      tempCs.toCharArray(tempCsa, 7);
+      tft.drawString(50, 120, tempCsa, ST7735_WHITE);
+    }
+    else {
+      char tempFsa[7];
+      tempFs.toCharArray(tempFsa, 7); 
+      tft.drawString(50, 120, tempFsa, ST7735_WHITE);
+    }
+    j = j+1;
   #endif
   
   #if defined(ENABLE_TFT) && defined(ENABLE_THERM)
