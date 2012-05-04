@@ -8,11 +8,11 @@
 
 /* Sensors */
 #define ENABLE_BMP085
-#define ENABLE_ADXL
+//#define ENABLE_ADXL
 #define ENABLE_SDLOG
 #define ENABLE_TFT
 #define ENABLE_GPS
-//#define ENABLE_THERM
+#define ENABLE_THERM
 
 /* GPS */
 #ifdef ENABLE_GPS
@@ -74,21 +74,25 @@
   ADXL345 accel;
 #endif
 
-/* Thermocouple */
+/* Thermistor */
 #ifdef ENABLE_THERM
-  #include <max6675.h>
-  //change these pins
-  int thermoDO = 36;
-  int thermoCS = 37;
-  int thermoCLK = 39;
-  MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
-  uint8_t degree[8]  = {140,146,146,140,128,128,128,128};
+  #define THERMISTORPIN A15
+  #define THERMISTORNOMINAL 10000
+  #define TEMPERATURENOMINAL 25
+  #define NUMSAMPLES 5
+  #define BCOEFFICIENT 3950
+  #define SERIESRESISTOR 10000
+  int samples[NUMSAMPLES];
+  float k = 0;
 #endif
 
 void setup() 
 {
   Serial.begin(115200);
   Serial.println("SAPHE Telemetry Payload");
+  #ifdef ENABLE_THERM
+    analogReference(EXTERNAL);
+  #endif
   
     /* Setup the SD Log */
   #ifdef ENABLE_SDLOG
@@ -145,7 +149,7 @@ void setup()
         header += ",Latitude,Longitude,Knots,GPSAltitude,Satelites,Fix,Quality,Angle,GPStimestamp";
       #endif
       #if defined(ENABLE_THERM)
-        header += ",ThermTempC";
+        header += ",Resistance,ThermTempC";
       #endif
       logFile.println(header);
       logFile.close();
@@ -422,13 +426,38 @@ void loop()
   #endif
   
   #if defined(ENABLE_THERM)
-//    Serial.println(thermocouple.readCelsius());
-//    Serial.println(thermocouple.readFarenheit());
-    double cels = thermocouple.readCelsius();
-    char ccels[10]; dtostrf(cels, 7, 2, ccels);
+    float thermR;
+    float thermC;
+    float thermF;
+    char thermRc[6];
+    char thermCc[6];
+    k = analogRead(THERMISTORPIN);
+    Serial.println(k);
+    k = (1023 / k) - 1;
+    k = SERIESRESISTOR / k;
+    thermR = k;
+    Serial.println(thermR);
+    float steinhart;
+    steinhart = thermR / THERMISTORNOMINAL;
+    steinhart = log(steinhart);
+    steinhart /= BCOEFFICIENT;
+    steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15);
+    steinhart = 1.0 / steinhart;
+    steinhart -= 273.15;
+    thermC = steinhart;
+//    thermC = 25;
+    Serial.println(thermC);
+    thermF = ((thermC * 9) / 5) + 32;
+    Serial.println(thermF);
+    dtostrf(thermR, 4, 2, thermRc);
+    dtostrf(thermC, 4, 2, thermCc);
+    String thermFs;
+    String thermCs; thermCs = String(thermCc) + "  ";
+    char thermFc[6]; dtostrf(thermF, 4, 2, thermFc);
+    k = 0;
   #endif
   
-  #if defined(ENABLE_SDLOG) && defined(ENABLE_BMP085) && defined(ENABLE_ADXL)
+  #if defined(ENABLE_SDLOG)
     String record;
 
 /* RTC */    
@@ -454,7 +483,7 @@ void loop()
   
 /* THM */
     #if defined(ENABLE_THERM)
-      record += (ccels);
+      record += (String(thermRc) + comma + String(thermCc));
     #endif
   
 //    Serial.println();
@@ -513,15 +542,17 @@ void loop()
       tempFs.toCharArray(tempFsa, 7); 
       tft.drawString(50, 120, tempFsa, ST7735_WHITE);
     }
-    j = j+1;
   #endif
   
   #if defined(ENABLE_TFT) && defined(ENABLE_THERM)
-    //Serial.println(scels);
-    //char scels_char[scels.length() + 1];
-    //cels.toCharArray(scels_char, sizeof(scels_char));
     tft.setRotation(1);
-    tft.drawString(100, 120, ccels, ST7735_WHITE);
+    if(j%2 == 0) {
+      tft.drawString(110, 120, thermCc, ST7735_WHITE);
+    }
+    else {
+      tft.drawString(110, 120, thermFc, ST7735_WHITE);
+    }
+    j = j+1;
   #endif
   
 //  delay(10);
