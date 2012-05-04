@@ -4,7 +4,15 @@ Arduino Sketch Folder
 Sketches
 --------
 * `arduino/flight_telemetry` Flight Telemetry for Project SAPHE
- 
+  * Arduino MEGA 2560
+  * [Sparkfun] (http://www.sparkfun.com/products/9694) BMP085 Barometric Pressure / Temperature / Altitude sensor
+  * [Adafruit] (http://www.adafruit.com/products/243) Datalogger Shield
+  * [Adafruit] (https://www.adafruit.com/products/757) logic level converter
+  * [Adafruit] (https://www.adafruit.com/products/372) 10k thermistor
+  * [Adafruit] (https://www.adafruit.com/products/746) Ultimate GPS (high altitude?)
+  * [Adafruit] (https://www.adafruit.com/products/358) 1.8" tft lcd
+
+
 Libraries
 ---------
 * `arduino/libraries/Adafruit_BMP085` BMP085 Barometer/Thermometer library from Adafruit
