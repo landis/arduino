@@ -12,6 +12,12 @@ Sketches
   * [Adafruit] (https://www.adafruit.com/products/746) Ultimate GPS (high altitude?)
   * [Adafruit] (https://www.adafruit.com/products/358) 1.8" tft lcd
 
+* `arduino/reflow_oven` Solder reflow oven controller
+	* [Black and Decker] (http://www.amazon.com/Black-Decker-FC300-Infrawave-Oven/dp/B001AX8F4Y/ref=sr_1_2?ie=UTF8&qid=1336673199&sr=8-2) Infrawave Oven
+	* [Adafruit] (http://www.adafruit.com/products/269) MAX6675 Thermocouple Amplifier
+	* [Adafruit] (http://www.adafruit.com/products/270) Thermocouple Type K
+	* [Sparkfun] (http://www.sparkfun.com/products/709) 16x2 LCD (HD44780 chipset)
+
 
 Libraries
 ---------
