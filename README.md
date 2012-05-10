@@ -30,3 +30,4 @@ Libraries
 * `arduino/libraries/RTClib` DS1307 real time clock library
 * `arduino/libraries/SD` SD card library from Adafruit
 * `arduino/libraries/TinyGPS` Generic Serial GPS library
+* `arduino/libraries/PID_v1` PID library (Error Calc)
