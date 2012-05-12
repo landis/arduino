@@ -270,11 +270,11 @@ void loop()
       timerSeconds++;
       // Send temperature and time stamp to serial 
       Serial.print(timerSeconds);
-      Serial.print(" ");
+      Serial.print(",");
       Serial.print(setpoint);
-      Serial.print(" ");
+      Serial.print(",");
       Serial.print(input);
-      Serial.print(" ");
+      Serial.print(",");
       Serial.println(output);
     }
     else
@@ -323,7 +323,7 @@ void loop()
                 if (input <= TEMPERATURE_ROOM)
                 {
                     // Send header for CSV file
-                    Serial.println("Time Setpoint Input Output");
+                    Serial.println("Time,Setpoint,Input,Output");
                     // Intialize seconds timer for serial debug information
                     timerSeconds = 0;
                     // Initialize PID control window starting time
