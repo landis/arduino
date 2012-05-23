@@ -1,5 +1,5 @@
 [_setup_]
-port=COM4   
+port=COM4
 baudrate=57600
 
 width=1000
@@ -32,4 +32,4 @@ min=0
 max=255
 
 [Output]
-color=green
+color=transparent
