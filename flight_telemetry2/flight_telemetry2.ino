@@ -8,8 +8,8 @@ A5 to RTC SCL
 GPS
 3.3V to VIN
 GND to GND
-D3 to GPS TX
-D2 to GPS RX
+D5 to GPS TX
+D4 to GPS RX
 
 /*** Configuration ***/
 #define ENABLE_RTC
@@ -18,6 +18,9 @@ D2 to GPS RX
 #define ENABLE_SOFTSERIAL
 //#define ENABLE_HARDSERIAL
 //#define ENABLE_INT
+//#define ENABLE_GPSLOG
+//#define ENABLE_GPSECHO
+#define ENABLE_SD
 
 //ENABLE_RTC | Chronodot ***?
 #ifdef ENABLE_RTC
@@ -38,19 +41,19 @@ D2 to GPS RX
 
 #ifdef ENABLE_SOFTSERIAL
   #if ARDUINO >= 100
-    SoftwareSerial mySerial(3, 2);
+    SoftwareSerial mySerial(5, 4);
   #else
-    NewSoftSerial mySerial(3, 2);
+    NewSoftSerial mySerial(5, 4);
   #endif
   Adafruit_GPS GPS(&mySerial);
 #endif
 
 #ifdef ENABLE_HARDSERIAL
-  Adafruit_GPS GPS(&Serial1);
+  Adafruit_GPS GPS(&Serial);
 #endif
 
-#if defined(ENABLE_SERIAL) && defined(ENABLE_GPS)
-  #define GPSECHO true
+#if defined(ENABLE_ECHO) && defined(ENABLE_GPS)
+  #define GPSECHO true 
 #else
   #if defined(ENABLE_GPS)
     #define GPSECHO false
@@ -67,6 +70,11 @@ D2 to GPS RX
   #endif
 #endif
 
+#ifdef ENABLE_SD
+  int redLEDpin = 2;
+  int greenLEDpin = 3;
+#endif
+
 void setup() {
   Serial.begin(115200);
   
@@ -81,7 +89,7 @@ void setup() {
   #endif
   
     #ifdef ENABLE_GPS
-      #ifdef ENABLE_SERIAL
+      #if defined (ENABLE_SERIAL) && defined (ENABLE_GPSLOG)
         Serial.println("Adafruit GPS logging start test!");
       #endif
     
@@ -89,19 +97,26 @@ void setup() {
       GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
       GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
 
-      useInterrupt(  true);
+      useInterrupt(true);
 
-      while (true) {
-        #ifdef ENABLE_SERIAL
-          Serial.print("Starting logging....");
-          if (GPS.LOCUS_StartLogger()) {
-            Serial.println(" STARTED!");
-            break;
-          } else {
-            Serial.println(" no response :(");
-          }
-        #endif
-      }
+      #ifdef ENABLE_GPSLOG
+        while (true) {
+          #ifdef ENABLE_SERIAL
+            Serial.print("Starting logging....");
+            if (GPS.LOCUS_StartLogger()) {
+              Serial.println(" STARTED!");
+              break;
+            } else {
+              Serial.println(" no response :(");
+            }
+          #endif
+        }
+      #endif
+    #endif
+
+    #ifdef ENABLE_SD
+      digitalWrite(redLEDpin, HIGH);
+      digitalWrite(greenLEDpin, HIGH);
     #endif
 }
 
@@ -126,7 +141,7 @@ void loop() {
   #endif
   
   #ifdef ENABLE_GPS
-    delay(1000);
+    //delay(1000);
     if (GPS.LOCUS_ReadStatus()) {
       Serial.print("\n\nLog #");
       Serial.print(GPS.LOCUS_serial, DEC);
