@@ -71,7 +71,7 @@ uint8_t const  SPI_SCK_PIN = SCK_PIN;
 #else  // SOFTWARE_SPI
 // define software SPI pins so Mega can use unmodified GPS Shield
 /** SPI chip select pin */
-uint8_t const SD_CHIP_SELECT_PIN = 10;
+uint8_t const SD_CHIP_SELECT_PIN = 8;
 /** SPI Master Out Slave In pin */
 uint8_t const SPI_MOSI_PIN = 11;
 /** SPI Master In Slave Out pin */
