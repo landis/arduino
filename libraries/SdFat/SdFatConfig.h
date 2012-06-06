@@ -106,7 +106,7 @@
  * on Mega Arduinos.  Software SPI works well with GPS Shield V1.1
  * but many SD cards will fail with GPS Shield V1.0.
  */
-#define MEGA_SOFT_SPI 0
+#define MEGA_SOFT_SPI 1
 //------------------------------------------------------------------------------
 /**
  * Set USE_SOFTWARE_SPI nonzero to always use software SPI.
