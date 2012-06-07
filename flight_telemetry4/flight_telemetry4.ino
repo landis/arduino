@@ -64,7 +64,7 @@ void setup()
   #endif  // USE_DS1307
   
   // initialize the SD card at SPI_HALF_SPEED
-  if (!sd.begin(CHIP_SELECT, SPI_HALF_SPEED)) sd.initErrorHalt();
+  if (!sd.begin(CHIP_SELECT, SPI_FULL_SPEED)) sd.initErrorHalt();
   
   // create a new file in root
   char name[] = "LOGGER00.CSV";
@@ -79,6 +79,7 @@ void setup()
   if(!logfile.is_open()) error("file.open");
   
   cout << pstr("Logging to: ") << name << endl;
+  cout << endl;
   
   obufstream bout(buf, sizeof(buf));
   
@@ -87,6 +88,8 @@ void setup()
   #if USE_DS1307
     bout << pstr(",date,time");
   #endif  // USE_DS1307
+  
+  logfile << buf << endl;
   
   #if ECHO_TO_SERIAL
     cout << buf << endl;
