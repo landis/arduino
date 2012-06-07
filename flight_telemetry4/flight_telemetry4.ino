@@ -1,6 +1,7 @@
 #include <SdFat.h>
 #include <SdFatUtil.h>
 
+#define ECHO_TO_XB       1
 #define CHIP_SELECT      8
 #define USE_DS1307       1
 #define ECHO_TO_SERIAL   1
@@ -45,12 +46,25 @@ char buf[80];
   }
 #endif  // USE_DS1307
 
+#if ECHO_TO_XB
+  #include <SoftwareSerial.h>
+  SoftwareSerial xbSerial(2, 3); // RX, TX
+  ArduinoOutStream xout(xbSerial);
+#endif
+
 void setup() 
 {
   Serial.begin(9600);
   
+  #if ECHO_TO_XB
+    xbSerial.begin(57600);
+  #endif
+  
   // pstr stores strings in flash to save RAM
   cout << endl << pstr("FreeRam: ") << FreeRam() << endl;
+  #if ECHO_TO_XB
+    xout << endl << pstr("FreeRam: ") << FreeRam() << endl;
+  #endif
   
   #if USE_DS1307
     // connect to RTC
@@ -61,13 +75,16 @@ void setup()
     SdFile::dateTimeCallback(dateTime);
     DateTime now = rtc.now();
     cout << now << endl;
+    #if ECHO_TO_XB
+      xout << now << endl;
+    #endif
   #endif  // USE_DS1307
   
   // initialize the SD card at SPI_HALF_SPEED
   if (!sd.begin(CHIP_SELECT, SPI_FULL_SPEED)) sd.initErrorHalt();
   
   // create a new file in root
-  char name[] = "LOGGER00.CSV";
+  char name[] = "SAPHE000.CSV";
   
   for (uint8_t i = 0; i < 100; i++) {
     name[6] = i/10 + '0';
@@ -80,6 +97,10 @@ void setup()
   
   cout << pstr("Logging to: ") << name << endl;
   cout << endl;
+  #if ECHO_TO_XB
+    xout << pstr("Logging to: ") << name << endl;
+    xout << endl;
+  #endif
   
   obufstream bout(buf, sizeof(buf));
   
@@ -94,6 +115,10 @@ void setup()
   #if ECHO_TO_SERIAL
     cout << buf << endl;
   #endif  // ECHO_TO_SERIAL
+  
+  #if ECHO_TO_XB
+    xout << buf << endl;
+  #endif
 }
 
 void loop() 
@@ -127,6 +152,11 @@ void loop()
   #if ECHO_TO_SERIAL
     cout << buf;
   #endif  //ECHO_TO_SERIAL
+  
+  #if ECHO_TO_XB
+    xout << buf;
+    xout << endl;
+  #endif
   
   // dont log two points in the same millis
   if (m == millis()) delay(1);
