@@ -13,11 +13,15 @@ SdFat sd;
 // text file for logging
 ofstream logfile;
 
+char name1[] = "SAPHE000.CSV";
+char name2[] = "NMEA0000.CSV";
+
 // Serial print stream
 ArduinoOutStream cout(Serial);
 
 // buffer to format data - makes it easier to echo to Serial
-char buf[80];
+char buf[90];
+char guf[90];
 
 // store error strings in flash to save RAM
 #define error(s) sd.errorHalt_P(PSTR(s))
@@ -83,34 +87,46 @@ void setup()
   // initialize the SD card at SPI_HALF_SPEED
   if (!sd.begin(CHIP_SELECT, SPI_FULL_SPEED)) sd.initErrorHalt();
   
-  // create a new file in root
-  char name[] = "SAPHE000.CSV";
-  
+  // increment the file names
   for (uint8_t i = 0; i < 100; i++) {
-    name[6] = i/10 + '0';
-    name[7] = i%10 + '0';
-    if (sd.exists(name)) continue;
-    logfile.open(name);
+    name1[6] = i/10 + '0';
+    name1[7] = i%10 + '0';
+    if (sd.exists(name1)) continue;
+      logfile.open(name1);
     break;
   }
-  if(!logfile.is_open()) error("file.open");
+  if(!logfile.is_open()) error("log.open");
+  logfile.close();
   
-  cout << pstr("Logging to: ") << name << endl;
+  for (uint8_t i = 0; i < 100; i++) {
+    name2[6] = i/10 + '0';
+    name2[7] = i%10 + '0';
+    if (sd.exists(name2)) continue;
+      logfile.open(name2);
+    break;
+  }
+  if(!logfile.is_open()) error("gps.open");
+  logfile.close();
+  
+  cout << pstr("Logging to: ") << name1 << endl;
+  cout << pstr("GPS Log: ") << name2 << endl;
   cout << endl;
   #if ECHO_TO_XB
-    xout << pstr("Logging to: ") << name << endl;
-    xout << endl;
+    xout << pstr("Logging to: ") << name1 << endl;
+    xout << pstr("GPS Log: ") << name2 << endl << endl;
   #endif
   
   obufstream bout(buf, sizeof(buf));
   
-  bout << pstr("millis");
+  bout << pstr("secs");
   
   #if USE_DS1307
     bout << pstr(",date,time");
   #endif  // USE_DS1307
   
-  logfile << buf << endl;
+  logfile.open(name1);
+  logfile << buf << endl << flush;
+  logfile.close();
   
   #if ECHO_TO_SERIAL
     cout << buf << endl;
@@ -124,38 +140,54 @@ void setup()
 void loop() 
 {
   uint32_t m;
+  uint32_t s;
   
   // wait for time to be a multiple of interval
   do {
     m = millis();
+    s = m/1000;
   } while (m % LOG_INTERVAL);
   
   // use buffer stream to format line
   obufstream bout(buf, sizeof(buf));
+  // different buffer for gps stream
+  obufstream gout(guf, sizeof(guf));
   
-  // start with time in millis
-  bout << m;
+  // start with time in secs
+  bout << s;
+  gout << s;
   
   #if USE_DS1307
     DateTime now = rtc.now();
     bout << ',' << now;
+    gout << ',' << now;
   #endif  //USE_DS1307
   
+  //temp marker for gps lines
+  gout << " gps";
+  
   bout << endl;
+  gout << endl;
   
   //log data and flush to SD
+  logfile.open(name1);
   logfile << buf << flush;
+  if (!logfile) error("write log data failed");
+  logfile.close();
   
-  // check for error
-  if (!logfile) error("write data failed");
-  
+  logfile.open(name2);
+  logfile << guf << flush;
+  if (!logfile) error("write gps data failed");
+  logfile.close();
+
   #if ECHO_TO_SERIAL
     cout << buf;
+    cout << guf;
   #endif  //ECHO_TO_SERIAL
   
   #if ECHO_TO_XB
-    xout << buf;
-    xout << endl;
+    xout << buf << endl;
+    xout << guf << endl;
   #endif
   
   // dont log two points in the same millis
