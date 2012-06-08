@@ -1,0 +1,30 @@
+#######################################
+# Syntax Coloring Map For Matrix
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+ADXL345	KEYWORD1
+AccelerometerRaw	KEYWORD1
+AccelerometerScaled	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+ReadRawAxis	KEYWORD2
+ReadScaledAxis	KEYWORD2
+SetRange KEYWORD2
+EnableMeasurements	KEYWORD2
+EnsureConnected	KEYWORD2
+
+XAxis	KEYWORD2
+YAxis	KEYWORD2
+ZAxis	KEYWORD2
+IsConnected	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
