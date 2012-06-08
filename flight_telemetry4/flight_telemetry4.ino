@@ -26,6 +26,10 @@
   long dpspress = 0, dpstemp = 0, dpsaltitude = 0;
 // ****  
 
+// adxl345
+  #include <bildr_ADXL345.h>
+  ADXL345 adxl;
+
 // file system object
 SdFat sd;
 
@@ -39,8 +43,8 @@ char name2[] = "NMEA0000.CSV";
 ArduinoOutStream cout(Serial);
 
 // buffer to format data - makes it easier to echo to Serial
-char buf[90];
-char guf[90];
+char buf[120];
+char guf[120];
 
 // store error strings in flash to save RAM
 #define error(s) sd.errorHalt_P(PSTR(s))
@@ -81,6 +85,37 @@ void setup()
   // thermistor aref
   analogReference(EXTERNAL);
   
+  // adxl345 setup
+  adxl.powerOn();
+  adxl.setActivityThreshold(75);
+  adxl.setInactivityThreshold(75);
+  adxl.setTimeInactivity(10);
+  adxl.setActivityX(1);
+  adxl.setActivityY(1);
+  adxl.setActivityZ(1);
+  adxl.setInactivityX(1);
+  adxl.setInactivityY(1);
+  adxl.setInactivityZ(1);
+  adxl.setTapDetectionOnX(0);
+  adxl.setTapDetectionOnY(0);
+  adxl.setTapDetectionOnZ(1);
+  adxl.setTapThreshold(50);
+  adxl.setTapDuration(15);
+  adxl.setDoubleTapLatency(80);
+  adxl.setDoubleTapWindow(200);
+  adxl.setFreeFallThreshold(5);
+  adxl.setFreeFallDuration(45);
+  adxl.setInterruptMapping( ADXL345_INT_SINGLE_TAP_BIT,  ADXL345_INT1_PIN );
+  adxl.setInterruptMapping( ADXL345_INT_DOUBLE_TAP_BIT,  ADXL345_INT1_PIN );
+  adxl.setInterruptMapping( ADXL345_INT_FREE_FALL_BIT,  ADXL345_INT1_PIN );
+  adxl.setInterruptMapping( ADXL345_INT_ACTIVITY_BIT,   ADXL345_INT1_PIN );
+  adxl.setInterruptMapping( ADXL345_INT_INACTIVITY_BIT,  ADXL345_INT1_PIN );
+  adxl.setInterrupt( ADXL345_INT_SINGLE_TAP_BIT, 1);
+  adxl.setInterrupt( ADXL345_INT_DOUBLE_TAP_BIT, 1);
+  adxl.setInterrupt( ADXL345_INT_FREE_FALL_BIT, 1);
+  adxl.setInterrupt( ADXL345_INT_ACTIVITY_BIT,  1);
+  adxl.setInterrupt( ADXL345_INT_INACTIVITY_BIT, 1);
+ 
   // bmp085
   Wire.begin();
   dps.init(MODE_ULTRA_HIGHRES, ALT_CM, true);
@@ -147,7 +182,7 @@ void setup()
   bout << pstr("secs");
   
   #if USE_DS1307
-    bout << pstr(",date,time,t_adc,t_resistance,ext_temp_c,int_temp_c,pascals,meters");
+    bout << pstr(",date,time,t_adc,t_resistance,ext_temp_c,int_temp_c,pascals,meters,freefall,inactivity,activity,doubletap,tap,x,y,z");
   #endif  // USE_DS1307
   
   logfile.open(name1);
@@ -169,6 +204,7 @@ void loop()
 {
   uint32_t m;
   uint32_t s;
+  int x,y,z;
   
   // wait for time to be a multiple of interval
   do {
@@ -219,6 +255,37 @@ void loop()
   dpsAltM = dpsAltM / 100;
   
   bout << ',' << dpsTempC << ',' << dpspress << ',' << dpsAltM;
+  
+  // adxl345
+  adxl.readAccel(&x, &y, &z);
+  byte interrupts = adxl.getInterruptSource();
+    //freefall
+    if(adxl.triggered(interrupts, ADXL345_FREE_FALL))
+      bout << ',' << '1';
+    else bout << ',' << '0';
+    
+    //inactivity
+    if(adxl.triggered(interrupts, ADXL345_INACTIVITY))
+      bout << ',' << '1';
+    else bout << ',' << '0';
+ 
+    //activity
+    if(adxl.triggered(interrupts, ADXL345_ACTIVITY))
+      bout << ',' << '1';
+    else bout << ',' << '0';
+
+ 
+    //double tap
+    if(adxl.triggered(interrupts, ADXL345_DOUBLE_TAP))
+      bout << ',' << '1';
+    else bout << ',' << '0';
+ 
+    //tap
+    if(adxl.triggered(interrupts, ADXL345_SINGLE_TAP))
+      bout << ',' << '1';
+    else bout << ',' << '0';
+  
+  bout << ',' << x << ',' << y << ',' << z;
   
   bout << endl;
   gout << endl;
