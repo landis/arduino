@@ -7,13 +7,24 @@
 #define ECHO_TO_SERIAL   1
 #define LOG_INTERVAL     1000
 
+// thermistor
+  #define SERIESRESISTOR     9810
+  #define THERMISTORPIN      A1
+  // resistance at 25 degrees C
+  #define THERMISTORNOMINAL  10000      
+  // temp. for nominal resistance (almost always 25 C)
+  #define TEMPERATURENOMINAL 25   
+  // The beta coefficient of the thermistor (usually 3000-4000)
+  #define BCOEFFICIENT       3950
+// ****
+
 // file system object
 SdFat sd;
 
 // text file for logging
 ofstream logfile;
 
-char name1[] = "SAPHE000.CSV";
+char name1[] = "SENS0000.CSV";
 char name2[] = "NMEA0000.CSV";
 
 // Serial print stream
@@ -59,6 +70,8 @@ char guf[90];
 void setup() 
 {
   Serial.begin(9600);
+  // thermistor aref
+  analogReference(EXTERNAL);
   
   #if ECHO_TO_XB
     xbSerial.begin(57600);
@@ -121,7 +134,7 @@ void setup()
   bout << pstr("secs");
   
   #if USE_DS1307
-    bout << pstr(",date,time");
+    bout << pstr(",date,time,t_adc,t_resistance,ext_temp_c");
   #endif  // USE_DS1307
   
   logfile.open(name1);
@@ -162,20 +175,36 @@ void loop()
     bout << ',' << now;
     gout << ',' << now;
   #endif  //USE_DS1307
+
+  // thermistor
+  float t_reading;
+  float t_resistance;
+  float steinhart;
   
-  //temp marker for gps lines
-  gout << " gps";
+  t_reading = analogRead(THERMISTORPIN);
+  t_resistance = (1023 / t_reading) - 1;
+  t_resistance = SERIESRESISTOR / t_resistance;
   
+  steinhart = t_resistance / THERMISTORNOMINAL;       // (R/Ro)
+  steinhart = log(steinhart);                         // ln(R/Ro)
+  steinhart /= BCOEFFICIENT;                          // 1/B * ln(R/Ro)
+  steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15);   // + (1/To)
+  steinhart = 1.0 / steinhart;                        // Invert
+  steinhart -= 273.15;
+  
+  bout << ',' << t_reading << ',' << t_resistance <<  ',' << steinhart;
+  // thermistor
+
   bout << endl;
   gout << endl;
   
   //log data and flush to SD
-  logfile.open(name1);
+  logfile.open(name1, ios::app);
   logfile << buf << flush;
   if (!logfile) error("write log data failed");
   logfile.close();
   
-  logfile.open(name2);
+  logfile.open(name2, ios::app);
   logfile << guf << flush;
   if (!logfile) error("write gps data failed");
   logfile.close();
