@@ -1,5 +1,6 @@
 #include <SdFat.h>
 #include <SdFatUtil.h>
+#include <Wire.h>
 
 #define ECHO_TO_XB       1
 #define CHIP_SELECT      8
@@ -17,6 +18,13 @@
   // The beta coefficient of the thermistor (usually 3000-4000)
   #define BCOEFFICIENT       3950
 // ****
+
+// bmp085
+  #include <BMP085.h>
+  BMP085 dps = BMP085();
+  int ALT_CM = 2400;
+  long dpspress = 0, dpstemp = 0, dpsaltitude = 0;
+// ****  
 
 // file system object
 SdFat sd;
@@ -38,7 +46,6 @@ char guf[90];
 #define error(s) sd.errorHalt_P(PSTR(s))
 
 #if USE_DS1307
-  #include <Wire.h>
   #include <RTClib.h>
   RTC_DS1307 rtc;  // define the RTC object
 
@@ -67,11 +74,17 @@ char guf[90];
   ArduinoOutStream xout(xbSerial);
 #endif
 
+//==================  setup  ====================//
 void setup() 
 {
   Serial.begin(9600);
   // thermistor aref
   analogReference(EXTERNAL);
+  
+  // bmp085
+  Wire.begin();
+  dps.init(MODE_ULTRA_HIGHRES, ALT_CM, true);
+  delay(1000);
   
   #if ECHO_TO_XB
     xbSerial.begin(57600);
@@ -134,7 +147,7 @@ void setup()
   bout << pstr("secs");
   
   #if USE_DS1307
-    bout << pstr(",date,time,t_adc,t_resistance,ext_temp_c");
+    bout << pstr(",date,time,t_adc,t_resistance,ext_temp_c,int_temp_c,pascals,meters");
   #endif  // USE_DS1307
   
   logfile.open(name1);
@@ -149,6 +162,8 @@ void setup()
     xout << buf << endl;
   #endif
 }
+
+//==================  loop  ====================//
 
 void loop() 
 {
@@ -180,7 +195,7 @@ void loop()
   float t_reading;
   float t_resistance;
   float steinhart;
-  
+    
   t_reading = analogRead(THERMISTORPIN);
   t_resistance = (1023 / t_reading) - 1;
   t_resistance = SERIESRESISTOR / t_resistance;
@@ -193,8 +208,18 @@ void loop()
   steinhart -= 273.15;
   
   bout << ',' << t_reading << ',' << t_resistance <<  ',' << steinhart;
-  // thermistor
-
+  
+  // bmp085
+  dps.getTemperature(&dpstemp);
+  dps.getPressure(&dpspress);
+  dps.getAltitude(&dpsaltitude);
+  float dpsTempC = dpstemp;
+  float dpsAltM = dpsaltitude;
+  dpsTempC = dpsTempC / 10;
+  dpsAltM = dpsAltM / 100;
+  
+  bout << ',' << dpsTempC << ',' << dpspress << ',' << dpsAltM;
+  
   bout << endl;
   gout << endl;
   
