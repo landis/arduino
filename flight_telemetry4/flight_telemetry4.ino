@@ -30,53 +30,57 @@
   #include <bildr_ADXL345.h>
   ADXL345 adxl;
 
+// hmc5883l
+  #include <HMC58X3.h>
+  HMC58X3 magn;
+
 // file system object
-SdFat sd;
+  SdFat sd;
 
 // text file for logging
-ofstream logfile;
+  ofstream logfile;
 
-char name1[] = "SENS0000.CSV";
-char name2[] = "NMEA0000.CSV";
+  char name1[] = "SENS0000.CSV";
+  char name2[] = "NMEA0000.CSV";
 
 // Serial print stream
-ArduinoOutStream cout(Serial);
+  ArduinoOutStream cout(Serial);
 
 // buffer to format data - makes it easier to echo to Serial
-char buf[120];
-char guf[120];
+  char buf[256];
+  char guf[256];
 
 // store error strings in flash to save RAM
-#define error(s) sd.errorHalt_P(PSTR(s))
+  #define error(s) sd.errorHalt_P(PSTR(s))
 
-#if USE_DS1307
-  #include <RTClib.h>
-  RTC_DS1307 rtc;  // define the RTC object
+  #if USE_DS1307
+    #include <RTClib.h>
+    RTC_DS1307 rtc;  // define the RTC object
 
-  // call back for file timestamps
-  void dateTime(uint16_t* date, uint16_t* time) {
-    DateTime now = rtc.now();
+    // call back for file timestamps
+    void dateTime(uint16_t* date, uint16_t* time) {
+      DateTime now = rtc.now();
     
-    // return the date using FAT_DATE macro tor format fields
-    *date = FAT_DATE(now.year(), now.month(), now.day());
+      // return the date using FAT_DATE macro tor format fields
+      *date = FAT_DATE(now.year(), now.month(), now.day());
     
-    // return the time using FAT_TIME macro tor format fields
-    *time = FAT_TIME(now.hour(), now.minute(), now.second());
-  }
+      // return the time using FAT_TIME macro tor format fields
+      *time = FAT_TIME(now.hour(), now.minute(), now.second());
+    }
   // format date/time  
-  ostream& operator << (ostream& os, DateTime& dt) {
-    os << dt.year() << '/' << int(dt.month()) << '/' << int(dt.day()) << ',';
-    os << int(dt.hour()) << ':' << setfill('0') << setw(2) << int(dt.minute());
-    os << ':' << setw(2) << int(dt.second()) << setfill(' ');
-    return os;
-  }
-#endif  // USE_DS1307
+    ostream& operator << (ostream& os, DateTime& dt) {
+      os << dt.year() << '/' << int(dt.month()) << '/' << int(dt.day()) << ',';
+      os << int(dt.hour()) << ':' << setfill('0') << setw(2) << int(dt.minute());
+      os << ':' << setw(2) << int(dt.second()) << setfill(' ');
+      return os;
+    }
+  #endif  // USE_DS1307
 
-#if ECHO_TO_XB
-  #include <SoftwareSerial.h>
-  SoftwareSerial xbSerial(2, 3); // RX, TX
-  ArduinoOutStream xout(xbSerial);
-#endif
+  #if ECHO_TO_XB
+    #include <SoftwareSerial.h>
+    SoftwareSerial xbSerial(2, 3); // RX, TX
+    ArduinoOutStream xout(xbSerial);
+  #endif
 
 //==================  setup  ====================//
 void setup() 
@@ -84,6 +88,8 @@ void setup()
   Serial.begin(9600);
   // thermistor aref
   analogReference(EXTERNAL);
+  //i2c
+  Wire.begin();
   
   // adxl345 setup
   adxl.powerOn();
@@ -116,8 +122,12 @@ void setup()
   adxl.setInterrupt( ADXL345_INT_ACTIVITY_BIT,  1);
   adxl.setInterrupt( ADXL345_INT_INACTIVITY_BIT, 1);
  
+  // hmc5883l
+  magn.init(false);
+  //magn.calibrate(1, 32);
+  magn.setMode(0);
+  
   // bmp085
-  Wire.begin();
   dps.init(MODE_ULTRA_HIGHRES, ALT_CM, true);
   delay(1000);
   
@@ -182,7 +192,7 @@ void setup()
   bout << pstr("secs");
   
   #if USE_DS1307
-    bout << pstr(",date,time,t_adc,t_resistance,ext_temp_c,int_temp_c,pascals,meters,freefall,inactivity,activity,doubletap,tap,x,y,z");
+    bout << pstr(",date,time,t_adc,t_resistance,ext_temp_c,int_temp_c,pascals,meters,freefall,inactivity,activity,doubletap,tap,x,y,z,xG,yG,zG,mx,my,mz,heading");
   #endif  // USE_DS1307
   
   logfile.open(name1);
@@ -284,9 +294,23 @@ void loop()
     if(adxl.triggered(interrupts, ADXL345_SINGLE_TAP))
       bout << ',' << '1';
     else bout << ',' << '0';
+    float xG,yG,zG;
+    xG = x * 0.0039;
+    yG = y * 0.0039;
+    zG = z * 0.0039;
+  bout << ',' << x << ',' << y << ',' << z << ',' << xG << ',' << yG << ',' << zG;
   
-  bout << ',' << x << ',' << y << ',' << z;
+  // hmc5883l
+  float fx, fy, fz;
   
+  magn.getValues(&fx,&fy,&fz);
+  float heading = atan2(fy, fx); 
+  if(heading < 0) {
+    heading += 2 * M_PI;
+  }
+  float modHeading = heading * 180/M_PI;
+  bout << ',' << fx << ',' << fy << ',' << fz << ',' << modHeading;
+
   bout << endl;
   gout << endl;
   
