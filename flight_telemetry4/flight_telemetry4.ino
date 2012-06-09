@@ -347,9 +347,9 @@ void loop()
   bout << endl;
   
   unsigned long start = millis();
-  char c;
+  int c;
   while (start + 9000 > millis()) // every loop for 5 secs
-      char c = GPS.read();
+      c = GPS.read();
       if(tinygps.encode(c))
       {
         gout << c;
