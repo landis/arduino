@@ -36,7 +36,9 @@
   
 // gps
   #include <Adafruit_GPS.h>
+  #include <TinyGPS.h>
   Adafruit_GPS GPS(&Serial3);
+  TinyGPS tinygps;
   #define GPSECHO true
   boolean usingInterrupt = false;
   void useInterrupt(boolean);
@@ -342,9 +344,13 @@ void loop()
   bout << endl;
   
   unsigned long start = millis();
-  while (start + 1000 > millis())
-      gout << GPS.read();
-
+  char c;
+  while (start + 5000 > millis()) // every loop for 5 secs
+      char c = GPS.read();
+      if(tinygps.encode(c))
+      {
+        gout << c;
+      }
   
   //log data and flush to SD
   logfile.open(name1, ios::app);
