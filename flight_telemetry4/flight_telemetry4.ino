@@ -37,14 +37,23 @@
 // gps
   #include <Adafruit_GPS.h>
   Adafruit_GPS GPS(&Serial3);
-  #define GPSECHO true
+  #define GPSBUFFSIZE 90
+  char gpsbuffer[GPSBUFFSIZE];
+  uint8_t bufferidx = 0;
+  uint8_t fix = 0;
   
-  #include <TinyGPS.h>
-  TinyGPS tinygps;
-  
-  //boolean usingInterrupt = false;
-  //void useInterrupt(boolean);
-  
+// read a Hex value and return the decimal equiv
+uint8_t parseHex(char c) {
+  if (c < '0')
+    return 0;
+  if (c <= '9')
+    return c - '0';
+  if (c < 'A')
+    return 0;
+  if (c <= 'F')
+    return (c - 'A')+10;
+}
+
 // file system object
   SdFat sd;
 
@@ -101,7 +110,7 @@ void setup()
   #if ECHO_TO_XB
     xbSerial.begin(57600);
   #endif
-  
+
   // thermistor aref
   analogReference(EXTERNAL);
 
@@ -149,18 +158,6 @@ void setup()
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
   GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
   GPS.sendCommand(PMTK_LOCUS_STARTLOG);
-//  GPS.LOCUS_StartLogger();
-//  if (GPS.LOCUS_StartLogger()) {
-//    cout << endl << pstr("Flash log started") << endl;
-//    #if ECHO_TO_XB
-//      xout << endl << pstr("Flash log started") << endl;
-//    #endif
-//  } else {
-//    cout << endl << pstr("Flash log ERROR") << endl;
-//    #if ECHO_TO_XB
-//      xout << endl << pstr("Flash log ERROR") << endl;
-//    #endif
-//  }
   
 // bmp085
   dps.init(MODE_ULTRA_HIGHRES, ALT_CM, true);
@@ -346,14 +343,46 @@ void loop()
 
   bout << endl;
   
-  unsigned long start = millis();
-  int c;
-  while (start + 9000 > millis()) // every loop for 5 secs
-      c = GPS.read();
-      if(tinygps.encode(c))
-      {
-        gout << c;
+  // gps
+  char c;
+  uint8_t sum;
+  
+  if (Serial3.available()) {
+    c = GPS.read();
+    //cout << c;
+    if (bufferidx == 0) {
+      while (c != '$')
+        c = GPS.read();      // wait for the $
+    }
+    gpsbuffer[bufferidx] = c;
+    //cout << c;
+    if (c == '\n') {
+      //cout << gpsbuffer;
+      gpsbuffer[bufferidx+1] = 0; //terminate it
+      
+      if (gpsbuffer[bufferidx-4] != '*') {
+        cout << pstr("*");
+        bufferidx = 0;
+        return;
       }
+      
+      sum = parseHex(gpsbuffer[bufferidx-3]) * 16;
+      sum += parseHex(gpsbuffer[bufferidx-2]);
+      
+      for (uint8_t i=1; i < (bufferidx-4); i++) {
+        sum ^= gpsbuffer[i];
+      }
+      if (sum != 0) {
+        cout << pstr("~");
+        bufferidx = 0;
+        return;
+      }
+    }
+    
+    bufferidx++;
+    
+    gout << gpsbuffer;
+  }
   
   //log data and flush to SD
   logfile.open(name1, ios::app);
@@ -377,5 +406,7 @@ void loop()
   #endif
   
   // dont log two points in the same millis
-  if (m == millis()) delay(1);
+//  if (m == millis()) delay(1);
 }
+
+
