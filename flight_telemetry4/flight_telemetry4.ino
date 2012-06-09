@@ -33,7 +33,14 @@
 // hmc5883l
   #include <HMC58X3.h>
   HMC58X3 magn;
-
+  
+// gps
+  #include <Adafruit_GPS.h>
+  Adafruit_GPS GPS(&Serial3);
+  #define GPSECHO true
+  boolean usingInterrupt = false;
+  void useInterrupt(boolean);
+  
 // file system object
   SdFat sd;
 
@@ -49,7 +56,7 @@
 // buffer to format data - makes it easier to echo to Serial
   char buf[256];
   char guf[256];
-
+  
 // store error strings in flash to save RAM
   #define error(s) sd.errorHalt_P(PSTR(s))
 
@@ -86,8 +93,14 @@
 void setup() 
 {
   Serial.begin(9600);
+
+  #if ECHO_TO_XB
+    xbSerial.begin(57600);
+  #endif
+  
   // thermistor aref
   analogReference(EXTERNAL);
+
   //i2c
   Wire.begin();
   
@@ -127,14 +140,27 @@ void setup()
   //magn.calibrate(1, 32);
   magn.setMode(0);
   
-  // bmp085
+  // gps
+  GPS.begin(9600);
+  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+  
+  if (GPS.LOCUS_StartLogger()) {
+    cout << endl << pstr("Flash log started") << endl;
+    #if ECHO_TO_XB
+      xout << endl << pstr("Flash log started") << endl;
+    #endif
+  } else {
+    cout << endl << pstr("Flash log ERROR") << endl;
+    #if ECHO_TO_XB
+      xout << endl << pstr("Flash log ERROR") << endl;
+    #endif
+  }
+  
+// bmp085
   dps.init(MODE_ULTRA_HIGHRES, ALT_CM, true);
   delay(1000);
-  
-  #if ECHO_TO_XB
-    xbSerial.begin(57600);
-  #endif
-  
+
   // pstr stores strings in flash to save RAM
   cout << endl << pstr("FreeRam: ") << FreeRam() << endl;
   #if ECHO_TO_XB
@@ -216,25 +242,27 @@ void loop()
   uint32_t s;
   int x,y,z;
   
+  // use buffer stream to format line
+  obufstream bout(buf, sizeof(buf));
+  // different buffer for gps stream
+  obufstream gout(guf, sizeof(guf));
+  
   // wait for time to be a multiple of interval
   do {
     m = millis();
     s = m/1000;
   } while (m % LOG_INTERVAL);
   
-  // use buffer stream to format line
-  obufstream bout(buf, sizeof(buf));
-  // different buffer for gps stream
-  obufstream gout(guf, sizeof(guf));
+
   
   // start with time in secs
   bout << s;
-  gout << s;
+  //gout << s;
   
   #if USE_DS1307
     DateTime now = rtc.now();
     bout << ',' << now;
-    gout << ',' << now;
+  //  gout << ',' << now;
   #endif  //USE_DS1307
 
   // thermistor
@@ -312,7 +340,11 @@ void loop()
   bout << ',' << fx << ',' << fy << ',' << fz << ',' << modHeading;
 
   bout << endl;
-  gout << endl;
+  
+  unsigned long start = millis();
+  while (start + 1000 > millis())
+      gout << GPS.read();
+
   
   //log data and flush to SD
   logfile.open(name1, ios::app);
