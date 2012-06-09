@@ -37,8 +37,12 @@
 // gps
   #include <Adafruit_GPS.h>
   Adafruit_GPS GPS(&Serial3);
+  #define GPSECHO true
+  boolean usingInterrupt = false;
+  
   #define GPSBUFFSIZE 90
   char gpsbuffer[GPSBUFFSIZE];
+  String gpsbuffer2;
   uint8_t bufferidx = 0;
   uint8_t fix = 0;
   
@@ -158,6 +162,8 @@ void setup()
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
   GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
   GPS.sendCommand(PMTK_LOCUS_STARTLOG);
+  useInterrupt(true);
+  
   
 // bmp085
   dps.init(MODE_ULTRA_HIGHRES, ALT_CM, true);
@@ -344,46 +350,29 @@ void loop()
   bout << endl;
   
   // gps
-  char c;
-  uint8_t sum;
+//  char c;
+//  uint8_t sum;
+//  uint8_t j = 0;
   
-  if (Serial3.available()) {
-    c = GPS.read();
-    //cout << c;
-    if (bufferidx == 0) {
-      while (c != '$')
-        c = GPS.read();      // wait for the $
-    }
-    gpsbuffer[bufferidx] = c;
-    //cout << c;
-    if (c == '\n') {
-      //cout << gpsbuffer;
-      gpsbuffer[bufferidx+1] = 0; //terminate it
-      
-      if (gpsbuffer[bufferidx-4] != '*') {
-        cout << pstr("*");
-        bufferidx = 0;
-        return;
-      }
-      
-      sum = parseHex(gpsbuffer[bufferidx-3]) * 16;
-      sum += parseHex(gpsbuffer[bufferidx-2]);
-      
-      for (uint8_t i=1; i < (bufferidx-4); i++) {
-        sum ^= gpsbuffer[i];
-      }
-      if (sum != 0) {
-        cout << pstr("~");
-        bufferidx = 0;
-        return;
-      }
-    }
-    
-    bufferidx++;
-    
-    gout << gpsbuffer;
-  }
-  
+//while (Serial3.available()) {
+//  c = Serial3.read();
+//   while (c != '$') {
+//      c = Serial3.read()
+//      while (c !=;
+//      j = 0;
+//      gpsbuffer[j] = c;
+//    }
+//    while (j < 60) {
+//      c = Serial3.read();
+//      gpsbuffer[j+1] = c;
+//      j++;
+//    }
+//  }
+//  Serial.println(gpsbuffer);
+  char charbuf[256];
+  gpsbuffer2.toCharArray(charbuf, 256);
+  gout << charbuf;
+
   //log data and flush to SD
   logfile.open(name1, ios::app);
   logfile << buf << flush;
@@ -397,7 +386,7 @@ void loop()
 
   #if ECHO_TO_SERIAL
     cout << buf;
-    cout << guf;
+    cout << guf << endl;
   #endif  //ECHO_TO_SERIAL
   
   #if ECHO_TO_XB
@@ -409,4 +398,28 @@ void loop()
 //  if (m == millis()) delay(1);
 }
 
+// Interrupt is called once a millisecond, looks for any new GPS data, and stores it
+SIGNAL(TIMER0_COMPA_vect) {
+  char c = GPS.read();
+  // if you want to debug, this is a good time to do it!
+  if (GPSECHO)
+    
+    if (c) UDR0 = c;  
+    if (c) gpsbuffer2 += c;
+    // writing direct to UDR0 is much much faster than Serial.print 
+    // but only one character can be written at a time. 
+}
 
+void useInterrupt(boolean v) {
+  if (v) {
+    // Timer0 is already used for millis() - we'll just interrupt somewhere
+    // in the middle and call the "Compare A" function above
+    OCR0A = 0xAF;
+    TIMSK0 |= _BV(OCIE0A);
+    usingInterrupt = true;
+  } else {
+    // do not call the interrupt function COMPA anymore
+    TIMSK0 &= ~_BV(OCIE0A);
+    usingInterrupt = false;
+  }
+}
