@@ -36,12 +36,14 @@
   
 // gps
   #include <Adafruit_GPS.h>
-  #include <TinyGPS.h>
   Adafruit_GPS GPS(&Serial3);
-  TinyGPS tinygps;
   #define GPSECHO true
-  boolean usingInterrupt = false;
-  void useInterrupt(boolean);
+  
+  #include <TinyGPS.h>
+  TinyGPS tinygps;
+  
+  //boolean usingInterrupt = false;
+  //void useInterrupt(boolean);
   
 // file system object
   SdFat sd;
@@ -146,18 +148,19 @@ void setup()
   GPS.begin(9600);
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
   GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
-  
-  if (GPS.LOCUS_StartLogger()) {
-    cout << endl << pstr("Flash log started") << endl;
-    #if ECHO_TO_XB
-      xout << endl << pstr("Flash log started") << endl;
-    #endif
-  } else {
-    cout << endl << pstr("Flash log ERROR") << endl;
-    #if ECHO_TO_XB
-      xout << endl << pstr("Flash log ERROR") << endl;
-    #endif
-  }
+  GPS.sendCommand(PMTK_LOCUS_STARTLOG);
+//  GPS.LOCUS_StartLogger();
+//  if (GPS.LOCUS_StartLogger()) {
+//    cout << endl << pstr("Flash log started") << endl;
+//    #if ECHO_TO_XB
+//      xout << endl << pstr("Flash log started") << endl;
+//    #endif
+//  } else {
+//    cout << endl << pstr("Flash log ERROR") << endl;
+//    #if ECHO_TO_XB
+//      xout << endl << pstr("Flash log ERROR") << endl;
+//    #endif
+//  }
   
 // bmp085
   dps.init(MODE_ULTRA_HIGHRES, ALT_CM, true);
@@ -345,7 +348,7 @@ void loop()
   
   unsigned long start = millis();
   char c;
-  while (start + 5000 > millis()) // every loop for 5 secs
+  while (start + 9000 > millis()) // every loop for 5 secs
       char c = GPS.read();
       if(tinygps.encode(c))
       {
