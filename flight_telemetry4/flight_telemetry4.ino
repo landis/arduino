@@ -48,7 +48,7 @@
   ofstream logfile;
 
   char name1[] = "SENS0000.CSV";
-  char name2[] = "NMEA0000.CSV";
+  char name2[] = "NMEA0000.txt";
 
 // Serial print stream
   ArduinoOutStream cout(Serial);
