@@ -7,6 +7,7 @@
 #define USE_DS1307       1
 #define ECHO_TO_SERIAL   1
 #define LOG_INTERVAL     1000
+#define LED_PIN          7
 
 // thermistor
   #define SERIESRESISTOR     9810
@@ -110,6 +111,9 @@ uint8_t parseHex(char c) {
 void setup() 
 {
   Serial.begin(9600);
+  
+  //blinky
+  pinMode(LED_PIN, OUTPUT);
 
   #if ECHO_TO_XB
     xbSerial.begin(57600);
@@ -249,6 +253,11 @@ void loop()
   uint32_t m;
   uint32_t s;
   int x,y,z;
+
+  //blinky
+  digitalWrite(LED_PIN, HIGH);
+  delay(500);
+  digitalWrite(LED_PIN, LOW);
   
   // use buffer stream to format line
   obufstream bout(buf, sizeof(buf));
