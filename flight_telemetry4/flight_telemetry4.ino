@@ -1,3 +1,5 @@
+//re-write with fat16lib's serial port logger as base
+
 #include <SdFat.h>
 #include <SdFatUtil.h>
 #include <Wire.h>
