@@ -1,4 +1,8 @@
 //re-write with fat16lib's serial port logger as base
+//also including watchdog timer after re-burning bootloader
+//of mega2560 with fix for watchdog
+
+#include <avr/wdt.h>
 
 #include <SdFat.h>
 #include <SdFatUtil.h>
@@ -68,7 +72,7 @@ uint8_t parseHex(char c) {
   ofstream logfile;
 
   char name1[] = "SENS0000.CSV";
-  char name2[] = "NMEA0000.txt";
+  char name2[] = "NMEA0000.BIN";
 
 // Serial print stream
   ArduinoOutStream cout(Serial);
@@ -175,7 +179,7 @@ void setup()
   dps.init(MODE_ULTRA_HIGHRES, ALT_CM, true);
   delay(1000);
 
-  // pstr stores strings in flash to save RAM
+  // pstr stores strings in flash to save RAM                                                                                                                                                                                             
   cout << endl << pstr("FreeRam: ") << FreeRam() << endl;
   #if ECHO_TO_XB
     xout << endl << pstr("FreeRam: ") << FreeRam() << endl;
@@ -199,9 +203,12 @@ void setup()
   if (!sd.begin(CHIP_SELECT, SPI_FULL_SPEED)) sd.initErrorHalt();
   
   // increment the file names
-  for (uint8_t i = 0; i < 100; i++) {
-    name1[6] = i/10 + '0';
-    name1[7] = i%10 + '0';
+  for (uint8_t i = 0; i < 100000; i++) {
+    name[3] = (i / 10000) % 10 + '0';
+    name[4] = (i / 1000) % 10 + '0';
+    name[5] = (i / 100) % 10 + '0';
+    name[6] = (i / 10) % 10 + '0';
+    name[7] = i % 10 + '0';
     if (sd.exists(name1)) continue;
       logfile.open(name1);
     break;
