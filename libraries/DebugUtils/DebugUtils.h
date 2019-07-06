@@ -40,6 +40,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef DEBUG_PRINT
 #define DEBUG_PRINT(str)
+#define DEBUG_PRINTLN(str)
 #endif
 
 #endif //DEBUGUTILS_H
